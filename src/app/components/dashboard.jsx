@@ -8,6 +8,8 @@ import TideLevel from "./tidelevel";
 import LocationMap from "./map";
 import CombinedData from "./getData";
 import Rainfall from "./rainfall";
+import AirTemperature from "./airtemp";
+import Humidity from "./humidity";
 
 export default function CoastalDashboard() {
   const [position, setPosition] = useState([37.7749, -122.4194]);
@@ -213,11 +215,13 @@ export default function CoastalDashboard() {
         <h2 className="text-xl font-bold flex items-center gap-3 mb-6 text-teal-400">
           <Activity className="w-6 h-6" /> Sensor Data & Trends
         </h2>
-        <div className="space-y-8">
+        <div className="graphs space-y-8 overflow-y-auto">
           <TideLevel latitude={position[0]} longitude={position[1]} />
           <WindSpeedChart latitude={position[0]} longitude={position[1]} />
           <WaterTemperatureChart latitude={position[0]} longitude={position[1]} />
           <Rainfall latitude={position[0]} longitude={position[1]} />
+          <AirTemperature latitude={position[0]} longitude={position[1]} />
+          <Humidity latitude={position[0]} longitude={position[1]} />
         </div>
       </div>
     </div>
