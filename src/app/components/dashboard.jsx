@@ -34,15 +34,15 @@ export default function CoastalDashboard() {
       try {
         let data = null;
         console.log(inputData);
-        // Call prediction API with live inputData
-          const res = await fetch("http://127.0.0.1:5000/predict_all", {
+
+        const res = await fetch("http://127.0.0.1:5000/predict_all", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(inputData),
         });
+
         if (res.ok) {
           data = await res.json();
-            console.log(data);
           const isEmpty =
             !data || (typeof data === "object" && Object.keys(data).length === 0);
           if (isEmpty) {
@@ -56,7 +56,7 @@ export default function CoastalDashboard() {
 
         setPredictions(data);
 
-        // Always call Gemini with prediction results
+        // Gemini API
         const geminiRes = await fetch("/api/gemini-text", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -64,13 +64,10 @@ export default function CoastalDashboard() {
         });
 
         if (!geminiRes.ok) throw new Error("Gemini API failed");
-
         const geminiData = await geminiRes.json();
         setAlerts(geminiData.alerts || []);
       } catch (err) {
         console.error("Error fetching predictions:", err);
-
-        // Fallback to mock + Gemini
         setPredictions(mockResponse);
         try {
           const geminiRes = await fetch("/api/gemini-text", {
@@ -91,6 +88,10 @@ export default function CoastalDashboard() {
 
     fetchPredictions();
   }, [inputData]);
+
+  // Helper to show warning if data is missing
+  const showValue = (value, label) =>
+    value != null ? value : `${label} unavailable: chosen coordinate might be on land`;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-950 to-black text-gray-100 font-roboto antialiased flex gap-6 p-6">
@@ -180,39 +181,61 @@ export default function CoastalDashboard() {
         </div>
 
         <div className="flex-1 relative rounded-xl overflow-hidden">
-  {activeMap === "waves" ? (
-    <iframe
-      width="100%"
-      height="100%"
-      src={`https://embed.windy.com/embed.html?type=map&zoom=4&lat=${position[0]}&lon=${position[1]}&overlay=waves&product=ecmwfWaves&level=surface`}
-      frameBorder="0"
-    ></iframe>
-  ) : activeMap === "wind" ? (
-    <iframe
-      width="100%"
-      height="100%"
-      src={`https://embed.windy.com/embed.html?type=map&zoom=4&lat=${position[0]}&lon=${position[1]}&overlay=gustAccu&product=ecmwf&level=surface&marker=true`}
-      frameBorder="0"
-    ></iframe>
-  ) : activeMap === "tides" ? (
-    <iframe
-      width="100%"
-      height="100%"
-      src={`https://embed.windy.com/embed.html?type=map&zoom=4&lat=${position[0]}&lon=${position[1]}&overlay=currentsTide&product=cmems&level=surface`}
-      frameBorder="0"
-    ></iframe>
-  ) : (
-    <LocationMap position={position} setPosition={setPosition} />
-  )}
-</div>
-
+          {activeMap === "waves" ? (
+            <iframe
+              width="100%"
+              height="100%"
+              src={`https://embed.windy.com/embed.html?type=map&zoom=4&lat=${position[0]}&lon=${position[1]}&overlay=waves&product=ecmwfWaves&level=surface`}
+              frameBorder="0"
+            ></iframe>
+          ) : activeMap === "wind" ? (
+            <iframe
+              width="100%"
+              height="100%"
+              src={`https://embed.windy.com/embed.html?type=map&zoom=4&lat=${position[0]}&lon=${position[1]}&overlay=gustAccu&product=ecmwf&level=surface&marker=true`}
+              frameBorder="0"
+            ></iframe>
+          ) : activeMap === "tides" ? (
+            <iframe
+              width="100%"
+              height="100%"
+              src={`https://embed.windy.com/embed.html?type=map&zoom=4&lat=${position[0]}&lon=${position[1]}&overlay=currentsTide&product=cmems&level=surface`}
+              frameBorder="0"
+            ></iframe>
+          ) : (
+            <LocationMap position={position} setPosition={setPosition} />
+          )}
+        </div>
       </div>
 
       {/* Sensor Data */}
       <div className="w-1/4 bg-gray-800/60 backdrop-blur-md rounded-2xl border border-gray-700 p-5 shadow-lg flex flex-col h-[calc(100vh-3rem)]">
         <h2 className="text-xl font-bold flex items-center gap-3 mb-6 text-teal-400">
-          <Activity className="w-6 h-6" /> Sensor Data & Trends
+          <Activity className="w-6 h-6" /> Sensor Data & Predictions
         </h2>
+
+        {/* Predictions */}
+        <div className="space-y-4 mb-6">
+          <div>
+            <strong>Algae Index:</strong> {showValue(predictions?.algae, "Algae Index")}
+          </div>
+          <div>
+            <strong>Bleaching Prediction:</strong>{" "}
+            {predictions?.bleaching?.prediction != null
+              ? `${predictions.bleaching.prediction} (prob: ${(
+                  predictions.bleaching.probability * 100
+                ).toFixed(1)}%)`
+              : "Bleaching data unavailable: chosen coordinate might be on land"}
+          </div>
+          <div>
+            <strong>Hurricane Risk:</strong> {showValue(predictions?.hurricane, "Hurricane Risk")}
+          </div>
+          <div>
+            <strong>Tsunami Risk:</strong> {showValue(predictions?.tsunami, "Tsunami Risk")}
+          </div>
+        </div>
+
+        {/* Sensor charts */}
         <div className="space-y-8">
           <TideLevel latitude={position[0]} longitude={position[1]} />
           <WindSpeedChart latitude={position[0]} longitude={position[1]} />
