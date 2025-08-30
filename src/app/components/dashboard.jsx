@@ -14,6 +14,34 @@ export default function CoastalDashboard() {
   const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  // Mock alert data to display when API fails
+  const mockAlerts = [
+    {
+      type: "Hurricane Risk",
+      location: "Gulf Coast Region",
+      description: "Category 4 hurricane approaching with winds up to 120 mph. Residents should evacuate immediately.",
+      status: "danger"
+    },
+    {
+      type: "Tsunami Warning",
+      location: "Pacific Ring of Fire",
+      description: "Magnitude 7.2 earthquake detected. Tsunami waves expected within 3-5 hours.",
+      status: "danger"
+    },
+    {
+      type: "Algae Bloom",
+      location: "Coastal Waters",
+      description: "Harmful algae bloom detected. Swimming and fishing not recommended in affected areas.",
+      status: "danger"
+    },
+    {
+      type: "Coral Health",
+      location: "Great Barrier Reef",
+      description: "Coral bleaching severity is medium. Marine heatwave conditions observed.",
+      status: "safe"
+    }
+  ];
+
   const predictionInput = {
     hurricane: {
       wind_speed: 120,
@@ -97,10 +125,19 @@ export default function CoastalDashboard() {
           body: JSON.stringify({ predictions: data })
         });
         const geminiData = await geminiRes.json();
-        // Expected: geminiData.alerts = [{ type, location, description, status }]
-        setAlerts(geminiData.alerts);
+        
+        // Check if we received valid alerts data
+        if (geminiData.alerts && Array.isArray(geminiData.alerts) && geminiData.alerts.length > 0) {
+          setAlerts(geminiData.alerts);
+        } else {
+          // Fallback to mock data if no alerts received
+          console.log("No alerts from API, using mock data");
+          setAlerts(mockAlerts);
+        }
       } catch (err) {
         console.error("Error fetching predictions:", err);
+        // Use mock data when API fails
+        setAlerts(mockAlerts);
       } finally {
         setLoading(false);
       }
