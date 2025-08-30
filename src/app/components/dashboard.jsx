@@ -34,14 +34,14 @@ export default function CoastalDashboard() {
         let data = null;
         console.log(inputData);
         // Call prediction API with live inputData
-        const res = await fetch("/api/predict", {
+        const res = await fetch("http://127.0.0.1:5000/predict_all", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(inputData),
         });
-
         if (res.ok) {
           data = await res.json();
+            console.log(data);
           const isEmpty =
             !data || (typeof data === "object" && Object.keys(data).length === 0);
           if (isEmpty) {
