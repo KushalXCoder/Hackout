@@ -7,6 +7,7 @@ import WaterTemperatureChart from "./watertemp";
 import TideLevel from "./tidelevel";
 import LocationMap from "./map";
 import CombinedData from "./getData";
+import Rainfall from "./rainfall";
 
 export default function CoastalDashboard() {
   const [position, setPosition] = useState([37.7749, -122.4194]);
@@ -216,6 +217,7 @@ export default function CoastalDashboard() {
           <TideLevel latitude={position[0]} longitude={position[1]} />
           <WindSpeedChart latitude={position[0]} longitude={position[1]} />
           <WaterTemperatureChart latitude={position[0]} longitude={position[1]} />
+          <Rainfall latitude={position[0]} longitude={position[1]} />
         </div>
       </div>
     </div>
