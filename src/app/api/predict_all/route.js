@@ -1,6 +1,6 @@
 export async function POST(req) {
   try {
-    const backendUrl = process.env.PREDICT_ALL_URL; // e.g., http://127.0.0.1:5000/predict_all
+    const backendUrl =" http://127.0.0.1:5000/predict_all"; // e.g., http://127.0.0.1:5000/predict_all
     const input = await req.json();
 
     // Fallback mock if no backend configured
