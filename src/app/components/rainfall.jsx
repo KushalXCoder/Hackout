@@ -64,7 +64,7 @@ const Rainfall = ({ latitude, longitude }) => {
   }, [latitude, longitude]);
 
   return (
-    <div>
+    <div className="bg-gray-800/60 backdrop-blur-md rounded-2xl border border-gray-700 p-5 shadow-lg">
       <div className="flex justify-between text-sm font-medium mb-2">
         <span className="text-gray-300">🌧 Rainfall</span>
         {(() => {

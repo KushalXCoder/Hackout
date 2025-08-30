@@ -236,11 +236,11 @@ export default function CoastalDashboard() {
         </div>
 
         {/* Sensor charts */}
-        <div className="space-y-8">
+        <div className="space-y-8 ">
           <TideLevel latitude={position[0]} longitude={position[1]} />
           <WindSpeedChart latitude={position[0]} longitude={position[1]} />
           <WaterTemperatureChart latitude={position[0]} longitude={position[1]} />
-          <Rainfall latitude={position[0]} longitude={position[1]} />
+          {/* <Rainfall latitude={position[0]} longitude={position[1]} /> */}
         </div>
       </div>
     </div>
