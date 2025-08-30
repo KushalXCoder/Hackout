@@ -1,9 +1,34 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import dynamic from "next/dynamic";
+import { useMap } from "react-leaflet"; // keep this as a normal import
 import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 
+// Dynamically import components to avoid SSR errors
+const MapContainer = dynamic(
+  () => import("react-leaflet").then((mod) => mod.MapContainer),
+  { ssr: false }
+);
+const TileLayer = dynamic(
+  () => import("react-leaflet").then((mod) => mod.TileLayer),
+  { ssr: false }
+);
+const Marker = dynamic(
+  () => import("react-leaflet").then((mod) => mod.Marker),
+  { ssr: false }
+);
+const Popup = dynamic(
+  () => import("react-leaflet").then((mod) => mod.Popup),
+  { ssr: false }
+);
+const Polyline = dynamic(
+  () => import("react-leaflet").then((mod) => mod.Polyline),
+  { ssr: false }
+);
+
+// Marker icon
 const markerIcon = new L.Icon({
   iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
   iconSize: [25, 41],
@@ -11,60 +36,98 @@ const markerIcon = new L.Icon({
   popupAnchor: [1, -34],
 });
 
-export default function LocationMap() {
-  const [position, setPosition] = useState<[number, number] | null>(null);
-  const [manualInput, setManualInput] = useState("");
+// RecenterMap component
+function RecenterMap({ position }) {
+  const map = useMap();
 
-  // 📍 Auto-detect location
   useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          setPosition([pos.coords.latitude, pos.coords.longitude]);
-        },
-        (err) => console.error("Geolocation error:", err)
-      );
+    if (map && position && typeof map.getZoom === "function") {
+      map.flyTo(position, map.getZoom(), { animate: true });
+      map.invalidateSize();
     }
-  }, []);
+  }, [map, position]);
 
-  // 🌍 Convert user input (city name) to lat/lon using OpenStreetMap Nominatim API
-  const handleSearch = async () => {
-    if (!manualInput) return;
-    try {
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${manualInput}`
-      );
-      const data = await res.json();
-      if (data.length > 0) {
-        setPosition([parseFloat(data[0].lat), parseFloat(data[0].lon)]);
-      }
-    } catch (error) {
-      console.error("Location fetch failed:", error);
+  return null;
+}
+
+export default function LocationMap({ position, setPosition }) {
+  const [latitude, setLatitude] = useState(position[0]);
+  const [longitude, setLongitude] = useState(position[1]);
+  const [cyclone, setCyclone] = useState(null);
+
+  // Update position from inputs
+  const handleSearch = () => {
+    const lat = parseFloat(latitude);
+    const lon = parseFloat(longitude);
+
+    if (!isNaN(lat) && !isNaN(lon)) {
+      setPosition([lat, lon]);
+      localStorage.setItem("latitude", lat.toString());
+      localStorage.setItem("longitude", lon.toString());
     }
   };
+
+  // Fetch nearest cyclone when position changes
+  useEffect(() => {
+    if (!position) return;
+
+    const fetchCyclone = async () => {
+      try {
+        const res = await fetch(
+          `https://data.api.xweather.com/tropicalcyclones/closest?client_id=${process.env.API_ID}&client_secret=${process.env.API_SECRET}&lat=${position[0]}&lon=${position[1]}`
+        );
+        const data = await res.json();
+        if (data && data.length > 0) setCyclone(data[0]);
+        else {
+            setCyclone(null);
+            console.log("No cyclone data found for this location.");
+        }
+      } catch (err) {
+        console.error("Error fetching cyclone data:", err);
+        setCyclone(null);
+      }
+    };
+
+    fetchCyclone();
+  }, [position]);
+
+  // Update input fields when position changes
+  useEffect(() => {
+    if (position) {
+      setLatitude(position[0]);
+      setLongitude(position[1]);
+    }
+  }, [position]);
 
   return (
     <div className="p-4 bg-[#0d1117] rounded-xl text-white shadow-lg">
       <h2 className="text-lg font-semibold mb-3">🌍 Your Location</h2>
 
-      {/* Input box */}
       <div className="flex gap-2 mb-4">
         <input
-          type="text"
-          placeholder="Enter city or country"
+          type="number"
+          step="any"
+          placeholder="Latitude"
           className="flex-1 px-3 py-2 rounded-lg bg-gray-800 text-white border border-gray-600"
-          value={manualInput}
-          onChange={(e) => setManualInput(e.target.value)}
+          value={latitude}
+          onChange={(e) => setLatitude(e.target.value)}
+        />
+        <input
+          type="number"
+          step="any"
+          placeholder="Longitude"
+          className="flex-1 px-3 py-2 rounded-lg bg-gray-800 text-white border border-gray-600"
+          value={longitude}
+          onChange={(e) => setLongitude(e.target.value)}
         />
         <button
           onClick={handleSearch}
           className="px-4 py-2 bg-green-500 hover:bg-green-600 rounded-lg"
         >
-          Search
+          Set
         </button>
       </div>
 
-      {/* Map */}
       <div className="h-[400px] w-full rounded-lg overflow-hidden">
         {position ? (
           <MapContainer
@@ -77,12 +140,38 @@ export default function LocationMap() {
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               attribution="&copy; OpenStreetMap contributors"
             />
+
+            {/* User marker */}
             <Marker position={position} icon={markerIcon}>
               <Popup>
                 📍 Latitude: {position[0].toFixed(3)}, Longitude:{" "}
                 {position[1].toFixed(3)}
               </Popup>
             </Marker>
+
+            {/* Cyclone path */}
+            {cyclone && cyclone.path && (
+              <>
+                <Polyline
+                  positions={cyclone.path.map((p) => [p.lat, p.lon])}
+                  color="red"
+                  weight={3}
+                  dashArray="5,10"
+                />
+                {cyclone.path.map((p, idx) => (
+                  <Marker key={idx} position={[p.lat, p.lon]} icon={markerIcon}>
+                    <Popup>
+                      <b>{cyclone.name}</b> <br />
+                      Category: {p.category} <br />
+                      Wind: {p.wind_speed} km/h <br />
+                      Date: {new Date(p.timestamp).toLocaleString()}
+                    </Popup>
+                  </Marker>
+                ))}
+              </>
+            )}
+
+            <RecenterMap position={position} />
           </MapContainer>
         ) : (
           <p className="text-gray-400">Fetching location...</p>

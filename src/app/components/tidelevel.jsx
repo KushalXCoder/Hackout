@@ -15,31 +15,45 @@ const TideLevel = ({ latitude, longitude }) => {
   const [data, setData] = useState([]);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const res = await fetch(
-          `https://marine-api.open-meteo.com/v1/marine?latitude=${latitude}&longitude=${longitude}&hourly=sea_level_height_msl&timezone=Asia%2FSingapore&forecast_days=1`
-        );
-        const json = await res.json();
-
-        if (json?.hourly?.sea_level_height_msl) {
-          const chartData = json.hourly.time.map((t, i) => ({
-            time: new Date(t).toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            }),
-            sea_level_height_msl: json.hourly.sea_level_height_msl[i],
-          }));
-
-          setData(chartData);
-        }
-      } catch (err) {
-        console.error("Error fetching tide level data", err);
+  const fetchData = async (lat, lon) => {
+    try {
+      const res = await fetch(
+        `https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lon}&hourly=sea_level_height_msl&timezone=Asia%2FSingapore&forecast_days=1`
+      );
+      const json = await res.json();
+      if (json?.hourly?.sea_level_height_msl) {
+        const chartData = json.hourly.time.map((t, i) => ({
+          time: new Date(t).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+          sea_level_height_msl: json.hourly.sea_level_height_msl[i],
+        }));
+        setData(chartData);
       }
-    };
+    } catch (err) {
+      console.error("Error fetching tide level data", err);
+    }
+  };
 
-    fetchData();
+  // Initial fetch from props or localStorage fallback
+  const lat = latitude || parseFloat(localStorage.getItem("latitude"));
+  const lon = longitude || parseFloat(localStorage.getItem("longitude"));
+  if (lat && lon) fetchData(lat, lon);
+
+  // Listen to localStorage changes
+  const handleStorage = (e) => {
+    if (e.key === "latitude" || e.key === "longitude") {
+      const newLat = parseFloat(localStorage.getItem("latitude"));
+      const newLon = parseFloat(localStorage.getItem("longitude"));
+      if (!isNaN(newLat) && !isNaN(newLon)) fetchData(newLat, newLon);
+    }
+  };
+
+  window.addEventListener("storage", handleStorage);
+  return () => window.removeEventListener("storage", handleStorage);
   }, [latitude, longitude]);
+
 
   return (
     <div>
