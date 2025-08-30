@@ -249,5 +249,6 @@ export default function CoastalDashboard() {
         </div>
       </div>
     </div>
+    </div>
   );
 }
