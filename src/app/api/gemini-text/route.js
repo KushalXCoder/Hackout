@@ -1,15 +1,26 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const genAI = new GoogleGenerativeAI(process.env.geminiKey);
+const geminiKey = process.env.geminiKey;
+const genAI = geminiKey ? new GoogleGenerativeAI(geminiKey) : null;
 
 export async function POST(req) {
+  let body = null;
   try {
-    const body = await req.json();
-    const { predictions } = body;
+    body = await req.json();
+    const { predictions } = body || {};
 
     if (!predictions) {
       return new Response(JSON.stringify({ alerts: [] }), { 
         status: 400,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
+
+    // If key missing, immediately fallback
+    if (!genAI) {
+      const fallbackAlerts = generateFallbackAlerts(predictions);
+      return new Response(JSON.stringify({ alerts: fallbackAlerts, note: "Gemini key missing. Returned fallback alerts." }), {
+        status: 200,
         headers: { "Content-Type": "application/json" }
       });
     }
@@ -77,9 +88,8 @@ Use "danger" for severe threats and "safe" for low-risk conditions.
 
   } catch (err) {
     console.error("Gemini API error:", err);
-    
     // Return fallback alerts when API fails
-    const fallbackAlerts = generateFallbackAlerts(body?.predictions || {});
+    const fallbackAlerts = generateFallbackAlerts((body && body.predictions) || {});
     
     return new Response(JSON.stringify({ 
       alerts: fallbackAlerts,
