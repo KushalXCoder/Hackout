@@ -2,7 +2,8 @@ import { Inter, Roboto } from "next/font/google";
 import "./globals.css";
 import 'leaflet/dist/leaflet.css';
 import Navbar from "./components/navbar";
-
+import { startHourlyUpdates } from "./api/lib/corn";
+startHourlyUpdates();
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
