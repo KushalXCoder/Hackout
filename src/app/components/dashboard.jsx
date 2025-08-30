@@ -1,15 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  CartesianGrid,
-} from "recharts";
 import { AlertTriangle, Waves, Activity } from "lucide-react";
 import WindSpeedChart from "./windspeed";
 import WaterTemperatureChart from "./watertemp";
@@ -48,15 +39,8 @@ export default function CoastalDashboard() {
     },
   ];
 
-  const chartData = Array.from({ length: 24 }, (_, i) => ({
-    time: `11:${i < 10 ? "0" + i : i} PM`,
-    tide: 1.5 + Math.sin(i * 0.2) * 0.5,
-    wind: 10 + Math.cos(i * 0.15) * 15,
-    temp: 20 + Math.sin(i * 0.1) * 3,
-    pollution: 40 + Math.cos(i * 0.25) * 20,
-  }));
-
   const [position, setPosition] = useState([37.7749, -122.4194]);
+  const [activeMap, setActiveMap] = useState("default"); // "default" or "waves"
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-950 to-black text-gray-100 font-roboto antialiased flex gap-6 p-6">
@@ -76,21 +60,27 @@ export default function CoastalDashboard() {
               } transition-all duration-200 hover:bg-opacity-60`}
             >
               <div className="flex justify-between items-start mb-2">
-                <h3 className={`font-semibold text-lg ${
-                  alert.status === "danger" ? "text-red-300" : "text-green-300"
-                }`}>
+                <h3
+                  className={`font-semibold text-lg ${
+                    alert.status === "danger" ? "text-red-300" : "text-green-300"
+                  }`}
+                >
                   {alert.type}
                 </h3>
-                <span className={`px-2 py-1 rounded-full text-xs ${
-                  alert.status === "danger"
-                    ? "bg-red-700 text-red-100"
-                    : "bg-green-700 text-green-100"
-                }`}>
+                <span
+                  className={`px-2 py-1 rounded-full text-xs ${
+                    alert.status === "danger"
+                      ? "bg-red-700 text-red-100"
+                      : "bg-green-700 text-green-100"
+                  }`}
+                >
                   {alert.status === "danger" ? "Danger" : "Safe"}
                 </span>
               </div>
               <p className="text-sm text-gray-300">{alert.location}</p>
-              <p className="text-sm text-gray-400 mt-1 line-clamp-2">{alert.description}</p>
+              <p className="text-sm text-gray-400 mt-1 line-clamp-2">
+                {alert.description}
+              </p>
               <p className="text-xs text-gray-500 mt-2">{alert.time}</p>
             </div>
           ))}
@@ -107,37 +97,77 @@ export default function CoastalDashboard() {
             Live View
           </button>
         </div>
-        <div className="flex gap-3 mb-6">
-          <button className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm hover:bg-blue-500 transition-colors">
-            Sea Level Rise
-          </button>
-          <button className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm hover:bg-blue-500 transition-colors">
-            Cyclone Path
-          </button>
-          <button className="px-4 py-2 rounded-lg bg-gray-600 text-white text-sm hover:bg-gray-500 transition-colors">
-            Fishing Zones
-          </button>
-          <button className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm hover:bg-blue-500 transition-colors">
-            Restricted Zones
-          </button>
-        </div>
-        {/* <div className="flex-1 relative rounded-xl bg-gradient-to-br from-blue-900 to-gray-900 flex items-center justify-center overflow-hidden">
-          <div className="absolute inset-0 bg-[url('https://via.placeholder.com/600x400.png?text=Map+Placeholder')] bg-cover bg-center opacity-20"></div>
-          <Activity className="w-20 h-20 text-red-400 opacity-50 animate-pulse" />
-          <div className="absolute bottom-4 left-4 text-sm text-gray-300">
-            <h4 className="font-semibold text-white mb-2">Legend</h4>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-green-500"></div> Safe Zone
-            </div>
-            <div className="flex items-center gap-2 mt-1">
-              <div className="w-3 h-3 rounded-full bg-yellow-500"></div> Caution Zone
-            </div>
-            <div className="flex items-center gap-2 mt-1">
-              <div className="w-3 h-3 rounded-full bg-red-500"></div> Danger Zone
-            </div>
-          </div>
-        </div> */}
-        <LocationMap position={position} setPosition={setPosition} />
+<div className="flex gap-3 mb-6 flex-wrap">
+  <button
+    onClick={() => setActiveMap("default")}
+    className={`px-4 py-2 rounded-lg text-sm transition-colors ${
+      activeMap === "default"
+        ? "bg-blue-600 text-white"
+        : "bg-gray-600 text-white hover:bg-gray-500"
+    }`}
+  >
+    Default Map
+  </button>
+  <button
+    onClick={() => setActiveMap("waves")}
+    className={`px-4 py-2 rounded-lg text-sm transition-colors ${
+      activeMap === "waves"
+        ? "bg-blue-600 text-white"
+        : "bg-gray-600 text-white hover:bg-gray-500"
+    }`}
+  >
+    Waves
+  </button>
+  <button
+    onClick={() => setActiveMap("wind")}
+    className={`px-4 py-2 rounded-lg text-sm transition-colors ${
+      activeMap === "wind"
+        ? "bg-blue-600 text-white"
+        : "bg-gray-600 text-white hover:bg-gray-500"
+    }`}
+  >
+    Wind
+  </button>
+  <button
+    onClick={() => setActiveMap("tides")}
+    className={`px-4 py-2 rounded-lg text-sm transition-colors ${
+      activeMap === "tides"
+        ? "bg-blue-600 text-white"
+        : "bg-gray-600 text-white hover:bg-gray-500"
+    }`}
+  >
+    Tides
+  </button>
+</div>
+
+<div className="flex-1 relative rounded-xl overflow-hidden">
+  {activeMap === "waves" ? (
+    <iframe
+      width="100%"
+      height="100%"
+      src="https://embed.windy.com/embed.html?type=map&zoom=4&lat=19.401&lon=80.28&overlay=waves&product=ecmwfWaves&level=surface"
+      frameBorder="0"
+    ></iframe>
+  ) : activeMap === "wind" ? (
+    <iframe
+      width="100%"
+      height="100%"
+      src="https://embed.windy.com/embed.html?type=map&zoom=5&lat=22.881&lon=86.107&overlay=gustAccu&product=ecmwf&level=surface&detailLat=22.880919901675366&detailLon=86.10689163208008&marker=true"
+      frameBorder="0"
+    ></iframe>
+  ) : activeMap === "tides" ? (
+    <iframe
+      width="100%"
+      height="100%"
+      src="https://embed.windy.com/embed.html?type=map&zoom=4&lat=18.258&lon=77.634&overlay=currentsTide&product=cmems&level=surface"
+      frameBorder="0"
+    ></iframe>
+  ) : (
+    <LocationMap position={position} setPosition={setPosition} />
+  )}
+</div>
+
+
       </div>
 
       {/* Sensor Data */}
@@ -157,7 +187,6 @@ export default function CoastalDashboard() {
           <div>
             <WaterTemperatureChart latitude={position[0]} longitude={position[1]} />
           </div>
-          
         </div>
       </div>
     </div>
