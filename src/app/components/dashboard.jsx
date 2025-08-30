@@ -179,31 +179,32 @@ export default function CoastalDashboard() {
         </div>
 
         <div className="flex-1 relative rounded-xl overflow-hidden">
-          {activeMap === "waves" ? (
-            <iframe
-              width="100%"
-              height="100%"
-              src="https://embed.windy.com/embed.html?type=map&zoom=4&lat=19.401&lon=80.28&overlay=waves&product=ecmwfWaves&level=surface"
-              frameBorder="0"
-            ></iframe>
-          ) : activeMap === "wind" ? (
-            <iframe
-              width="100%"
-              height="100%"
-              src="https://embed.windy.com/embed.html?type=map&zoom=5&lat=22.881&lon=86.107&overlay=gustAccu&product=ecmwf&level=surface&detailLat=22.880919901675366&detailLon=86.10689163208008&marker=true"
-              frameBorder="0"
-            ></iframe>
-          ) : activeMap === "tides" ? (
-            <iframe
-              width="100%"
-              height="100%"
-              src="https://embed.windy.com/embed.html?type=map&zoom=4&lat=18.258&lon=77.634&overlay=currentsTide&product=cmems&level=surface"
-              frameBorder="0"
-            ></iframe>
-          ) : (
-            <LocationMap position={position} setPosition={setPosition} />
-          )}
-        </div>
+  {activeMap === "waves" ? (
+    <iframe
+      width="100%"
+      height="100%"
+      src={`https://embed.windy.com/embed.html?type=map&zoom=4&lat=${position[0]}&lon=${position[1]}&overlay=waves&product=ecmwfWaves&level=surface`}
+      frameBorder="0"
+    ></iframe>
+  ) : activeMap === "wind" ? (
+    <iframe
+      width="100%"
+      height="100%"
+      src={`https://embed.windy.com/embed.html?type=map&zoom=4&lat=${position[0]}&lon=${position[1]}&overlay=gustAccu&product=ecmwf&level=surface&marker=true`}
+      frameBorder="0"
+    ></iframe>
+  ) : activeMap === "tides" ? (
+    <iframe
+      width="100%"
+      height="100%"
+      src={`https://embed.windy.com/embed.html?type=map&zoom=4&lat=${position[0]}&lon=${position[1]}&overlay=currentsTide&product=cmems&level=surface`}
+      frameBorder="0"
+    ></iframe>
+  ) : (
+    <LocationMap position={position} setPosition={setPosition} />
+  )}
+</div>
+
       </div>
 
       {/* Sensor Data */}
