@@ -21,14 +21,21 @@ const TideLevel = ({ latitude, longitude }) => {
         `https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lon}&hourly=sea_level_height_msl&timezone=Asia%2FSingapore&forecast_days=1`
       );
       const json = await res.json();
-      if (json?.hourly?.sea_level_height_msl) {
-        const chartData = json.hourly.time.map((t, i) => ({
-          time: new Date(t).toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
-          sea_level_height_msl: json.hourly.sea_level_height_msl[i],
-        }));
+      if (json?.hourly?.sea_level_height_msl && Array.isArray(json.hourly.time)) {
+        const chartData = json.hourly.time
+          .map((t, i) => {
+            const v = json.hourly.sea_level_height_msl[i];
+            const num = typeof v === "number" ? v : Number(v);
+            if (!Number.isFinite(num)) return null;
+            return {
+              time: new Date(t).toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
+              sea_level_height_msl: num,
+            };
+          })
+          .filter(Boolean);
         setData(chartData);
       }
     } catch (err) {
@@ -59,11 +66,14 @@ const TideLevel = ({ latitude, longitude }) => {
     <div>
       <div className="flex justify-between text-sm font-medium mb-2">
         <span className="text-gray-300">🌊 Tide Levels</span>
-        {data.length > 0 && (
-          <span className="text-green-400">
-            {data[data.length - 1].sea_level_height_msl.toFixed(2)} m
-          </span>
-        )}
+        {(() => {
+          const lastVal = data.length > 0 ? data[data.length - 1].sea_level_height_msl : null;
+          return (
+            <span className="text-green-400">
+              {typeof lastVal === "number" && Number.isFinite(lastVal) ? `${lastVal.toFixed(2)} m` : "--"}
+            </span>
+          );
+        })()}
       </div>
 
       <ResponsiveContainer width="100%" height={100}>

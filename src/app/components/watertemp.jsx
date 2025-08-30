@@ -26,14 +26,21 @@ const WaterTemperatureChart = ({ latitude, longitude }) => {
         );
         const json = await res.json();
 
-        if (json?.hourly?.temperature_2m) {
-          const chartData = json.hourly.time.map((t, i) => ({
-            time: new Date(t).toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            }),
-            temperature: json.hourly.temperature_2m[i],
-          }));
+        if (json?.hourly?.temperature_2m && Array.isArray(json.hourly.time)) {
+          const chartData = json.hourly.time
+            .map((t, i) => {
+              const v = json.hourly.temperature_2m[i];
+              const num = typeof v === "number" ? v : Number(v);
+              if (!Number.isFinite(num)) return null;
+              return {
+                time: new Date(t).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                }),
+                temperature: num,
+              };
+            })
+            .filter(Boolean);
 
           setData(chartData);
         }
@@ -49,11 +56,14 @@ const WaterTemperatureChart = ({ latitude, longitude }) => {
     <div>
       <div className="flex justify-between text-sm font-medium mb-2">
         <span className="text-gray-300">🌡 Water Temperature</span>
-        {data.length > 0 && (
-          <span className="text-green-400">
-            {data[data.length - 1].temperature.toFixed(1)} °C
-          </span>
-        )}
+        {(() => {
+          const lastVal = data.length > 0 ? data[data.length - 1].temperature : null;
+          return (
+            <span className="text-green-400">
+              {typeof lastVal === "number" && Number.isFinite(lastVal) ? `${lastVal.toFixed(1)} °C` : "--"}
+            </span>
+          );
+        })()}
       </div>
 
       <ResponsiveContainer width="100%" height={100}>

@@ -24,13 +24,22 @@ const WindSpeedChart = ({ latitude, longitude }) => {
         const data = await res.json();
 
         // Transform API data → chart-friendly format
-        const formatted = data.minutely_15.time.map((time, i) => ({
-          time: new Date(time).toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
-          wind: data.minutely_15.wind_speed_80m[i],
-        }));
+        const formatted = Array.isArray(data?.minutely_15?.time)
+          ? data.minutely_15.time
+              .map((time, i) => {
+                const v = data.minutely_15.wind_speed_80m?.[i];
+                const num = typeof v === "number" ? v : Number(v);
+                if (!Number.isFinite(num)) return null;
+                return {
+                  time: new Date(time).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  }),
+                  wind: num,
+                };
+              })
+              .filter(Boolean)
+          : [];
 
         setChartData(formatted);
       } catch (err) {
@@ -45,11 +54,14 @@ const WindSpeedChart = ({ latitude, longitude }) => {
     <div>
       <div className="flex justify-between text-sm font-medium mb-2">
         <span className="text-gray-300">Wind Speed</span>
-        {chartData.length > 0 && (
-          <span className="text-green-400">
-            {chartData[chartData.length - 1].wind.toFixed(1)} km/h
-          </span>
-        )}
+        {(() => {
+          const lastVal = chartData.length > 0 ? chartData[chartData.length - 1].wind : null;
+          return (
+            <span className="text-green-400">
+              {typeof lastVal === "number" && Number.isFinite(lastVal) ? `${lastVal.toFixed(1)} km/h` : "--"}
+            </span>
+          );
+        })()}
       </div>
 
       <ResponsiveContainer width="100%" height={100}>
