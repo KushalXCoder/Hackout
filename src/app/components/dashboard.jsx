@@ -16,32 +16,13 @@ export default function CoastalDashboard() {
 
   // Mock alert data to display when API fails
   const mockAlerts = [
-    {
-      type: "Hurricane Risk",
-      location: "Gulf Coast Region",
-      description: "Category 4 hurricane approaching with winds up to 120 mph. Residents should evacuate immediately.",
-      status: "danger"
-    },
-    {
-      type: "Tsunami Warning",
-      location: "Pacific Ring of Fire",
-      description: "Magnitude 7.2 earthquake detected. Tsunami waves expected within 3-5 hours.",
-      status: "danger"
-    },
-    {
-      type: "Algae Bloom",
-      location: "Coastal Waters",
-      description: "Harmful algae bloom detected. Swimming and fishing not recommended in affected areas.",
-      status: "danger"
-    },
-    {
-      type: "Coral Health",
-      location: "Great Barrier Reef",
-      description: "Coral bleaching severity is medium. Marine heatwave conditions observed.",
-      status: "safe"
-    }
+    { type: "Hurricane Risk", location: "Gulf Coast Region", description: "", status: "danger" },
+    { type: "Tsunami Warning", location: "Pacific Ring of Fire", description: "", status: "danger" },
+    { type: "Algae Bloom", location: "Coastal Waters", description: "", status: "danger" },
+    { type: "Coral Health", location: "Great Barrier Reef", description: "", status: "safe" },
   ];
 
+  // Input for prediction API
   const predictionInput = {
     hurricane: {
       wind_speed: 120,
@@ -57,7 +38,7 @@ export default function CoastalDashboard() {
       sea_surface_temp: 29.0,
       cloud_cover: 75,
       precipitation: 200,
-      storm_radius: 50
+      storm_radius: 50,
     },
     tsunami: {
       magnitude: 7.2,
@@ -72,7 +53,7 @@ export default function CoastalDashboard() {
       longitude: 167.5,
       year: 2025,
       month: 8,
-      mag_type: "mw"
+      mag_type: "mw",
     },
     algae: {
       significant_wave_height: 1.2,
@@ -83,7 +64,7 @@ export default function CoastalDashboard() {
       chlorophyll_concentration: 3.2,
       salinity: 34.8,
       nutrient_level: 2.1,
-      oxygen_concentration: 6.7
+      oxygen_concentration: 6.7,
     },
     bleaching: {
       date: "2025-08-30",
@@ -101,8 +82,8 @@ export default function CoastalDashboard() {
       oxygen_level: 6.8,
       nutrient_index: 0.9,
       wave_height: 1.2,
-      current_speed: 0.4
-    }
+      current_speed: 0.4,
+    },
   };
 
   useEffect(() => {
@@ -113,31 +94,51 @@ export default function CoastalDashboard() {
         const res = await fetch("/api/predict", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(predictionInput)
+          body: JSON.stringify(predictionInput),
         });
-        const data = await res.json();
-        setPredictions(data);
 
-        // Fetch Gemini API generated alerts
+        if (!res.ok) throw new Error("Prediction API failed");
+
+        const data = await res.json();
+
+        // If API returned empty or invalid, fallback to mock
+        const isEmpty = !data || (typeof data === "object" && Object.keys(data).length === 0);
+
+        if (isEmpty) {
+          console.warn("Prediction API returned empty. Using mock data.");
+          setPredictions(null);
+        } else {
+          setPredictions(data);
+        }
+
+        // Always call Gemini (with mockAlerts if prediction failed)
         const geminiRes = await fetch("/api/gemini-text", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ predictions: data })
+          body: JSON.stringify({ alerts: mockAlerts }),
         });
+
+        if (!geminiRes.ok) throw new Error("Gemini API failed");
+
         const geminiData = await geminiRes.json();
-        
-        // Check if we received valid alerts data
-        if (geminiData.alerts && Array.isArray(geminiData.alerts) && geminiData.alerts.length > 0) {
-          setAlerts(geminiData.alerts);
-        } else {
-          // Fallback to mock data if no alerts received
-          console.log("No alerts from API, using mock data");
-          setAlerts(mockAlerts);
-        }
+        setAlerts(geminiData.alerts || mockAlerts);
       } catch (err) {
         console.error("Error fetching predictions:", err);
-        // Use mock data when API fails
-        setAlerts(mockAlerts);
+
+        // fallback: mock data + Gemini call
+        setPredictions(null);
+        try {
+          const geminiRes = await fetch("/api/gemini-text", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ alerts: mockAlerts }),
+          });
+          const geminiData = await geminiRes.json();
+          setAlerts(geminiData.alerts || mockAlerts);
+        } catch (geminiErr) {
+          console.error("Gemini fallback failed:", geminiErr);
+          setAlerts(mockAlerts);
+        }
       } finally {
         setLoading(false);
       }
