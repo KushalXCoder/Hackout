@@ -11,134 +11,77 @@ import CombinedData from "./getData";
 export default function CoastalDashboard() {
   const [position, setPosition] = useState([37.7749, -122.4194]);
   const [activeMap, setActiveMap] = useState("default");
+  const [inputData, setInputData] = useState(null); // 🌊 live sensor data
   const [predictions, setPredictions] = useState(null);
   const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // Mock alert data to display when API fails
-  const mockAlerts = [
-    { type: "Hurricane Risk", location: "Gulf Coast Region", description: "", status: "danger" },
-    { type: "Tsunami Warning", location: "Pacific Ring of Fire", description: "", status: "danger" },
-    { type: "Algae Bloom", location: "Coastal Waters", description: "", status: "danger" },
-    { type: "Coral Health", location: "Great Barrier Reef", description: "", status: "safe" },
-  ];
-
-  // Input for prediction API
-  const predictionInput = {
-    hurricane: {
-      wind_speed: 120,
-      pressure: 950,
-      latitude: 18.5,
-      longitude: -75.3,
-      storm_category: 4,
-      humidity: 80,
-      wind_direction: 270,
-      wave_height: 12,
-      month: 9,
-      day_of_year: 250,
-      sea_surface_temp: 29.0,
-      cloud_cover: 75,
-      precipitation: 200,
-      storm_radius: 50,
-    },
-    tsunami: {
-      magnitude: 7.2,
-      cdi: 6,
-      mmi: 5,
-      sig: 900,
-      nst: 50,
-      dmin: 0.02,
-      gap: 120,
-      depth: 30,
-      latitude: -15.2,
-      longitude: 167.5,
-      year: 2025,
-      month: 8,
-      mag_type: "mw",
-    },
-    algae: {
-      significant_wave_height: 1.2,
-      max_wave_height: 2.5,
-      mean_wave_period: 6.5,
-      peak_wave_period: 8.2,
-      sea_surface_temp: 27.5,
-      chlorophyll_concentration: 3.2,
-      salinity: 34.8,
-      nutrient_level: 2.1,
-      oxygen_concentration: 6.7,
-    },
-    bleaching: {
-      date: "2025-08-30",
-      location_name: "Great Barrier Reef",
-      latitude: -18.2871,
-      longitude: 147.6992,
-      sea_surface_temp: 29.1,
-      ph_level: 8.05,
-      bleaching_severity: "Medium",
-      species_observed: 34,
-      marine_heatwave: true,
-      chlorophyll: 0.6,
-      salinity: 35.1,
-      turbidity: 0.7,
-      oxygen_level: 6.8,
-      nutrient_index: 0.9,
-      wave_height: 1.2,
-      current_speed: 0.4,
-    },
+  // Mock response for fallback
+  const mockResponse = {
+    algae: 3.8455799999999987,
+    bleaching: { prediction: 1, probability: 0.993824565319233 },
+    hurricane: 0.19,
+    tsunami: 0.65,
   };
 
+  // 🔗 Call /api/predict and Gemini whenever inputData updates
   useEffect(() => {
+    if (!inputData) return;
+
     const fetchPredictions = async () => {
       setLoading(true);
       try {
-        // Fetch predictions from backend
+        let data = null;
+        console.log(inputData);
+        // Call prediction API with live inputData
         const res = await fetch("/api/predict", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(predictionInput),
+          body: JSON.stringify(inputData),
         });
 
-        if (!res.ok) throw new Error("Prediction API failed");
-
-        const data = await res.json();
-
-        // If API returned empty or invalid, fallback to mock
-        const isEmpty = !data || (typeof data === "object" && Object.keys(data).length === 0);
-
-        if (isEmpty) {
-          console.warn("Prediction API returned empty. Using mock data.");
-          setPredictions(null);
+        if (res.ok) {
+          data = await res.json();
+          const isEmpty =
+            !data || (typeof data === "object" && Object.keys(data).length === 0);
+          if (isEmpty) {
+            console.warn("Prediction API returned empty. Using mock response.");
+            data = mockResponse;
+          }
         } else {
-          setPredictions(data);
+          console.warn("Prediction API failed. Using mock response.");
+          data = mockResponse;
         }
 
-        // Always call Gemini (with mockAlerts if prediction failed)
+        setPredictions(data);
+
+        // Always call Gemini with prediction results
         const geminiRes = await fetch("/api/gemini-text", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ alerts: mockAlerts }),
+          body: JSON.stringify({ predictions: data }),
         });
 
         if (!geminiRes.ok) throw new Error("Gemini API failed");
 
         const geminiData = await geminiRes.json();
-        setAlerts(geminiData.alerts || mockAlerts);
+        setAlerts(geminiData.alerts || []);
       } catch (err) {
         console.error("Error fetching predictions:", err);
 
-        // fallback: mock data + Gemini call
-        setPredictions(null);
+        // Fallback to mock + Gemini
+        setPredictions(mockResponse);
         try {
           const geminiRes = await fetch("/api/gemini-text", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ alerts: mockAlerts }),
+            body: JSON.stringify({ predictions: mockResponse }),
           });
           const geminiData = await geminiRes.json();
-          setAlerts(geminiData.alerts || mockAlerts);
+          setAlerts(geminiData.alerts || []);
         } catch (geminiErr) {
           console.error("Gemini fallback failed:", geminiErr);
-          setAlerts(mockAlerts);
+          setAlerts([]);
         }
       } finally {
         setLoading(false);
@@ -146,10 +89,16 @@ export default function CoastalDashboard() {
     };
 
     fetchPredictions();
-  }, []);
+  }, [inputData]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-950 to-black text-gray-100 font-roboto antialiased flex gap-6 p-6">
+      {/* 🌊 CombinedData fetcher */}
+      <CombinedData
+        latitude={position[0]}
+        longitude={position[1]}
+        onData={setInputData}
+      />
 
       {/* Alert Feed */}
       <div className="w-1/4 bg-gray-800/60 backdrop-blur-md rounded-2xl border border-gray-700 p-5 shadow-lg flex flex-col h-[calc(100vh-3rem)]">
@@ -170,19 +119,29 @@ export default function CoastalDashboard() {
                 } transition-all duration-200 hover:bg-opacity-60`}
               >
                 <div className="flex justify-between items-start mb-2">
-                  <h3 className={`font-semibold text-lg ${alert.status === "danger" ? "text-red-300" : "text-green-300"}`}>
+                  <h3
+                    className={`font-semibold text-lg ${
+                      alert.status === "danger"
+                        ? "text-red-300"
+                        : "text-green-300"
+                    }`}
+                  >
                     {alert.type}
                   </h3>
-                  <span className={`px-2 py-1 rounded-full text-xs ${
-                    alert.status === "danger"
-                      ? "bg-red-700 text-red-100"
-                      : "bg-green-700 text-green-100"
-                  }`}>
+                  <span
+                    className={`px-2 py-1 rounded-full text-xs ${
+                      alert.status === "danger"
+                        ? "bg-red-700 text-red-100"
+                        : "bg-green-700 text-green-100"
+                    }`}
+                  >
                     {alert.status === "danger" ? "Danger" : "Safe"}
                   </span>
                 </div>
                 <p className="text-sm text-gray-300">{alert.location}</p>
-                <p className="text-sm text-gray-400 mt-1 line-clamp-2">{alert.description}</p>
+                <p className="text-sm text-gray-400 mt-1 line-clamp-2">
+                  {alert.description}
+                </p>
               </div>
             ))
           ) : (
@@ -209,7 +168,9 @@ export default function CoastalDashboard() {
               key={mapType}
               onClick={() => setActiveMap(mapType)}
               className={`px-4 py-2 rounded-lg text-sm transition-colors ${
-                activeMap === mapType ? "bg-blue-600 text-white" : "bg-gray-600 text-white hover:bg-gray-500"
+                activeMap === mapType
+                  ? "bg-blue-600 text-white"
+                  : "bg-gray-600 text-white hover:bg-gray-500"
               }`}
             >
               {mapType.charAt(0).toUpperCase() + mapType.slice(1)}
