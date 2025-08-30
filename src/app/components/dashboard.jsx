@@ -6,6 +6,7 @@ import WindSpeedChart from "./windspeed";
 import WaterTemperatureChart from "./watertemp";
 import TideLevel from "./tidelevel";
 import LocationMap from "./map";
+import CombinedData from "./getData";
 
 export default function CoastalDashboard() {
   const [position, setPosition] = useState([37.7749, -122.4194]);
