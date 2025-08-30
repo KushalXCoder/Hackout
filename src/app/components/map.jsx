@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import dynamic from "next/dynamic";
 import { useMap } from "react-leaflet"; // keep this as a normal import
-import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
 // Dynamically import components to avoid SSR errors
@@ -28,13 +27,32 @@ const Polyline = dynamic(
   { ssr: false }
 );
 
-// Marker icon
-const markerIcon = new L.Icon({
-  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-});
+// Marker icon: create on client only to avoid SSR "window is not defined"
+// We lazy-load leaflet and construct the icon after mount.
+function useLeafletMarkerIcon() {
+  const [icon, setIcon] = useState(null);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      // Only run in browser
+      if (typeof window === "undefined") return;
+      const L = await import("leaflet");
+      const created = new L.Icon({
+        iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+      });
+      if (mounted) setIcon(created);
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  return icon;
+}
 
 // RecenterMap component
 function RecenterMap({ position }) {
@@ -54,6 +72,7 @@ export default function LocationMap({ position, setPosition }) {
   const [latitude, setLatitude] = useState(position[0]);
   const [longitude, setLongitude] = useState(position[1]);
   const [cyclone, setCyclone] = useState(null);
+  const markerIcon = useLeafletMarkerIcon();
 
   // Update position from inputs
   const handleSearch = () => {
@@ -79,8 +98,8 @@ export default function LocationMap({ position, setPosition }) {
         const data = await res.json();
         if (data && data.length > 0) setCyclone(data[0]);
         else {
-            setCyclone(null);
-            console.log("No cyclone data found for this location.");
+          setCyclone(null);
+          console.log("No cyclone data found for this location.");
         }
       } catch (err) {
         console.error("Error fetching cyclone data:", err);
@@ -142,12 +161,14 @@ export default function LocationMap({ position, setPosition }) {
             />
 
             {/* User marker */}
-            <Marker position={position} icon={markerIcon}>
-              <Popup>
-                📍 Latitude: {position[0].toFixed(3)}, Longitude:{" "}
-                {position[1].toFixed(3)}
-              </Popup>
-            </Marker>
+            {markerIcon && (
+              <Marker position={position} icon={markerIcon}>
+                <Popup>
+                  📍 Latitude: {position[0].toFixed(3)}, Longitude:{" "}
+                  {position[1].toFixed(3)}
+                </Popup>
+              </Marker>
+            )}
 
             {/* Cyclone path */}
             {cyclone && cyclone.path && (
@@ -158,16 +179,17 @@ export default function LocationMap({ position, setPosition }) {
                   weight={3}
                   dashArray="5,10"
                 />
-                {cyclone.path.map((p, idx) => (
-                  <Marker key={idx} position={[p.lat, p.lon]} icon={markerIcon}>
-                    <Popup>
-                      <b>{cyclone.name}</b> <br />
-                      Category: {p.category} <br />
-                      Wind: {p.wind_speed} km/h <br />
-                      Date: {new Date(p.timestamp).toLocaleString()}
-                    </Popup>
-                  </Marker>
-                ))}
+                {markerIcon &&
+                  cyclone.path.map((p, idx) => (
+                    <Marker key={idx} position={[p.lat, p.lon]} icon={markerIcon}>
+                      <Popup>
+                        <b>{cyclone.name}</b> <br />
+                        Category: {p.category} <br />
+                        Wind: {p.wind_speed} km/h <br />
+                        Date: {new Date(p.timestamp).toLocaleString()}
+                      </Popup>
+                    </Marker>
+                  ))}
               </>
             )}
 
