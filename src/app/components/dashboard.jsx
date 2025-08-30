@@ -7,6 +7,7 @@ import WaterTemperatureChart from "./watertemp";
 import TideLevel from "./tidelevel";
 import LocationMap from "./map";
 import CombinedData from "./getData";
+import Rainfall from "./rainfall";
 
 export default function CoastalDashboard() {
   const [position, setPosition] = useState([37.7749, -122.4194]);
@@ -34,7 +35,7 @@ export default function CoastalDashboard() {
         let data = null;
         console.log(inputData);
         // Call prediction API with live inputData
-        const res = await fetch("/api/predict_all", {
+          const res = await fetch("http://127.0.0.1:5000/predict_all", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(inputData),
@@ -216,6 +217,7 @@ export default function CoastalDashboard() {
           <TideLevel latitude={position[0]} longitude={position[1]} />
           <WindSpeedChart latitude={position[0]} longitude={position[1]} />
           <WaterTemperatureChart latitude={position[0]} longitude={position[1]} />
+          <Rainfall latitude={position[0]} longitude={position[1]} />
         </div>
       </div>
     </div>
