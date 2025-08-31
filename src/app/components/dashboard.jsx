@@ -18,6 +18,8 @@ export default function CoastalDashboard() {
   const [predictions, setPredictions] = useState(null);
   const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [mockaiData, setMockaiData] = useState(null);
+
 
   // Mock response for fallback
   const mockResponse = {
@@ -27,7 +29,41 @@ export default function CoastalDashboard() {
     tsunami: 0.65,
   };
 
-  // 🔗 Call /api/predict and Gemini whenever inputData updates
+  async function getOceanData(longitude, latitude) {
+    try {
+      const res = await fetch('/api/getOceanData', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ longitude, latitude }),
+      });
+
+      if (!res.ok) {
+        let errBody = null;
+        try { errBody = await res.json(); } catch (_) { /* ignore */ }
+        console.warn('getOceanData non-OK:', res.status, errBody || (await res.text().catch(() => '')));
+        return null;
+      }
+      const data = await res.json();
+      return data;
+    } catch (err) {
+      console.error('Error fetching ocean data:', err);
+      return null;
+    }
+  }
+
+
+  // 🔎 Fetch AI ocean data when coordinates change
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const result = await getOceanData(position[1], position[0]);
+      console.log(result);
+      if (!cancelled) setMockaiData(result);
+    })();
+    return () => { cancelled = true; };
+  }, [position]);
+
+  // 🔗 Call /api/predict and Gemini whenever inputData updates (from CombinedData)
   useEffect(() => {
     if (!inputData) return;
 
@@ -35,7 +71,6 @@ export default function CoastalDashboard() {
       setLoading(true);
       try {
         let data = null;
-        console.log(inputData);
 
         const res = await fetch("http://127.0.0.1:5000/predict_all", {
           method: "POST",
@@ -87,7 +122,6 @@ export default function CoastalDashboard() {
         setLoading(false);
       }
     };
-
     fetchPredictions();
   }, [inputData]);
 
@@ -116,28 +150,25 @@ export default function CoastalDashboard() {
             alerts.map((alert, idx) => (
               <div
                 key={idx}
-                className={`rounded-xl p-4 border-l-4 ${
-                  alert.status === "danger"
-                    ? "bg-red-900/40 border-red-500"
-                    : "bg-green-900/40 border-green-500"
-                } transition-all duration-200 hover:bg-opacity-60`}
+                className={`rounded-xl p-4 border-l-4 ${alert.status === "danger"
+                  ? "bg-red-900/40 border-red-500"
+                  : "bg-green-900/40 border-green-500"
+                  } transition-all duration-200 hover:bg-opacity-60`}
               >
                 <div className="flex justify-between items-start mb-2">
                   <h3
-                    className={`font-semibold text-lg ${
-                      alert.status === "danger"
-                        ? "text-red-300"
-                        : "text-green-300"
-                    }`}
+                    className={`font-semibold text-lg ${alert.status === "danger"
+                      ? "text-red-300"
+                      : "text-green-300"
+                      }`}
                   >
                     {alert.type}
                   </h3>
                   <span
-                    className={`px-2 py-1 rounded-full text-xs ${
-                      alert.status === "danger"
-                        ? "bg-red-700 text-red-100"
-                        : "bg-green-700 text-green-100"
-                    }`}
+                    className={`px-2 py-1 rounded-full text-xs ${alert.status === "danger"
+                      ? "bg-red-700 text-red-100"
+                      : "bg-green-700 text-green-100"
+                      }`}
                   >
                     {alert.status === "danger" ? "Danger" : "Safe"}
                   </span>
@@ -171,11 +202,10 @@ export default function CoastalDashboard() {
             <button
               key={mapType}
               onClick={() => setActiveMap(mapType)}
-              className={`px-4 py-2 rounded-lg text-sm transition-colors ${
-                activeMap === mapType
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-600 text-white hover:bg-gray-500"
-              }`}
+              className={`px-4 py-2 rounded-lg text-sm transition-colors ${activeMap === mapType
+                ? "bg-blue-600 text-white"
+                : "bg-gray-600 text-white hover:bg-gray-500"
+                }`}
             >
               {mapType.charAt(0).toUpperCase() + mapType.slice(1)}
             </button>
@@ -209,45 +239,17 @@ export default function CoastalDashboard() {
           )}
         </div>
       </div>
-
-      {/* Sensor Data */}
-      <div className="w-1/4 bg-gray-800/60 backdrop-blur-md rounded-2xl border border-gray-700 p-5 shadow-lg flex flex-col h-[calc(100vh-3rem)]">
-        <h2 className="text-xl font-bold flex items-center gap-3 mb-6 text-teal-400">
-          <Activity className="w-6 h-6" /> Sensor Data & Predictions
-        </h2>
-
-        {/* Predictions */}
-        <div className="space-y-4 mb-6">
-          <div>
-            <strong>Algae Index:</strong> {showValue(predictions?.algae, "Algae Index")}
-          </div>
-          <div>
-            <strong>Bleaching Prediction:</strong>{" "}
-            {predictions?.bleaching?.prediction != null
-              ? `${predictions.bleaching.prediction} (prob: ${(
-                  predictions.bleaching.probability * 100
-                ).toFixed(1)}%)`
-              : "Bleaching data unavailable: chosen coordinate might be on land"}
-          </div>
-          <div>
-            <strong>Hurricane Risk:</strong> {showValue(predictions?.hurricane, "Hurricane Risk")}
-          </div>
-          <div>
-            <strong>Tsunami Risk:</strong> {showValue(predictions?.tsunami, "Tsunami Risk")}
-          </div>
-        </div>
-
-        {/* Sensor charts */}
-        <div className="space-y-8">
-        <div className="graphs space-y-8 overflow-y-auto">
+      {/* Sensor charts */}
+      <div className="space-y-8 w-[400px] h-auto">
+        <div className="graphs space-y-8 w-full">
           <TideLevel latitude={position[0]} longitude={position[1]} />
           <WindSpeedChart latitude={position[0]} longitude={position[1]} />
           <WaterTemperatureChart latitude={position[0]} longitude={position[1]} />
-          <Rainfall latitude={position[0]} longitude={position[1]} />
-          <Humidity latitude={position[0]} longitude={position[1]} />
+          {/* <Rainfall latitude={position[0]} longitude={position[1]} />
+            <Humidity latitude={position[0]} longitude={position[1]} /> */}
         </div>
       </div>
     </div>
-    </div>
+
   );
 };
