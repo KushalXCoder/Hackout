@@ -243,8 +243,8 @@ export default function CoastalDashboard() {
           <TideLevel latitude={position[0]} longitude={position[1]} />
           <WindSpeedChart latitude={position[0]} longitude={position[1]} />
           <WaterTemperatureChart latitude={position[0]} longitude={position[1]} />
-          <Rainfall latitude={position[0]} longitude={position[1]} />
-          <Humidity latitude={position[0]} longitude={position[1]} />
+          {/* <Rainfall latitude={position[0]} longitude={position[1]} />
+          <Humidity latitude={position[0]} longitude={position[1]} /> */}
         </div>
       </div>
     </div>
